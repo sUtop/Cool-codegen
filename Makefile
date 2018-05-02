@@ -19,7 +19,8 @@ OBJS= ${CFIL:.cc=.o}
 OUTPUT= good.output bad.output
 
 
-CPPINCLUDE= -I. -I${CLASSDIR}/include/PA${ASSN} -I${CLASSDIR}/src/PA${ASSN}
+CPPINCLUDE= -I.
+# -I${CLASSDIR}/include/PA${ASSN} -I${CLASSDIR}/src/PA${ASSN}
 
 
 FFLAGS = -d8 -ocool-lex.cc
@@ -77,11 +78,11 @@ ${SRC} :
 ${LSRC} :
 	-${CLASSDIR}/etc/link-shared ${ASSN} ${LSRC}
 
-${TSRC} ${CSRC}:
-	-cp ${CLASSDIR}/src/PA${ASSN}/$@ $@
+#${TSRC} ${CSRC}:
+#	-cp ${CLASSDIR}/src/PA${ASSN}/$@ $@
 
-${HSRC}:
-	-cp ${CLASSDIR}/include/PA${ASSN}/$@ $@
+#${HSRC}:
+#	-cp ${CLASSDIR}/include/PA${ASSN}/$@ $@
 
 clean :
 	-rm -f ${OUTPUT} *.s core ${OBJS} cgen parser semant lexer *~ *.a *.o

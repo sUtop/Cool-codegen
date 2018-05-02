@@ -27,12 +27,21 @@
 
 long __offset = 0;
 //#define INFO_IN
-#define INFO_IN std::string tmp_in; for(long i_in =0; i_in < __offset; ++i_in) tmp_in += " ";\
-    fprintf(stderr, "%s %s: in\n", tmp_in.c_str(), __PRETTY_FUNCTION__); ++__offset;
+#define INFO_IN { std::string tmp_in; for(long i_in =0; i_in < __offset; ++i_in) tmp_in += " ";\
+    fprintf(stderr, "%s %s: in\n", tmp_in.c_str(), __PRETTY_FUNCTION__); ++__offset; }
+
+#define INFO_IN_AS
+//#define INFO_IN_AS { std::string tmp_in; for(long i_in =0; i_in < __offset; ++i_in) tmp_in += " ";\
+//    s << "\n # " << tmp_in << " " << __PRETTY_FUNCTION__ << " in\n"; }
 
 //#define INFO_OUT
 #define INFO_OUT { --__offset; std::string tmp_out; for(long i_out =0; i_out < __offset; ++i_out) tmp_out += " ";\
     fprintf(stderr, "%s %s: out\n", tmp_out.c_str(), __PRETTY_FUNCTION__);}
+
+#define INFO_OUT_AS
+//#define INFO_OUT_AS { std::string tmp_out; for(long i_out =0; i_out < __offset; ++i_out) tmp_out += " ";\
+//    s << "\n # " << tmp_out << " " << __PRETTY_FUNCTION__ << " out\n"; }
+
 
 extern void emit_string_constant(ostream& str, char *s);
 extern int cgen_debug;
@@ -138,16 +147,16 @@ BoolConst truebool(TRUE);
 //
 //*********************************************************
 
-void program_class::cgen(ostream &os) {
-    INFO_IN;
+void program_class::cgen(ostream &s) {
+    INFO_IN_AS;
     // spim wants comments to start with '#'
-    os << "# start of generated code\n";
+    s << "# start of generated code\n";
 
     initialize_constants();
-    CgenClassTable *codegen_classtable = new CgenClassTable(classes, os);
+    CgenClassTable *codegen_classtable = new CgenClassTable(classes, s);
 
-    os << "\n# end of generated code\n";
-    INFO_OUT;
+    s << "\n# end of generated code\n";
+    INFO_OUT_AS;
 }
 
 
@@ -166,249 +175,249 @@ void program_class::cgen(ostream &os) {
 //////////////////////////////////////////////////////////////////////////////
 
 static void emit_load(char *dest_reg, int offset, char *source_reg, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << LW << dest_reg << " " << offset * WORD_SIZE << "(" << source_reg << ")"
         << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_store(char *source_reg, int offset, char *dest_reg, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << SW << source_reg << " " << offset * WORD_SIZE << "(" << dest_reg << ")"
         << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_load_imm(char *dest_reg, int val, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << LI << dest_reg << " " << val << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_load_address(char *dest_reg, char *address, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << LA << dest_reg << " " << address << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_partial_load_address(char *dest_reg, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << LA << dest_reg << " ";
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_load_bool(char *dest, const BoolConst& b, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     emit_partial_load_address(dest, s);
     b.code_ref(s);
     s << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_load_string(char *dest, StringEntry *str, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     emit_partial_load_address(dest, s);
     str->code_ref(s);
     s << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_load_int(char *dest, IntEntry *i, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     emit_partial_load_address(dest, s);
     i->code_ref(s);
     s << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_move(char *dest_reg, char *source_reg, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << MOVE << dest_reg << " " << source_reg << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_neg(char *dest, char *src1, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << NEG << dest << " " << src1 << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_add(char *dest, char *src1, char *src2, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << ADD << dest << " " << src1 << " " << src2 << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_addu(char *dest, char *src1, char *src2, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << ADDU << dest << " " << src1 << " " << src2 << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_addiu(char *dest, char *src1, int imm, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << ADDIU << dest << " " << src1 << " " << imm << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_div(char *dest, char *src1, char *src2, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << DIV << dest << " " << src1 << " " << src2 << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_mul(char *dest, char *src1, char *src2, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << MUL << dest << " " << src1 << " " << src2 << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_sub(char *dest, char *src1, char *src2, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << SUB << dest << " " << src1 << " " << src2 << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_sll(char *dest, char *src1, int num, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << SLL << dest << " " << src1 << " " << num << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_jalr(char *dest, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << JALR << dest << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_jal(char *address, ostream &s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << JAL << address << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_return(ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << RET << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_gc_assign(ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << JAL << "_GenGC_Assign" << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_disptable_ref(Symbol sym, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << sym << DISPTAB_SUFFIX;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_init_ref(Symbol sym, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << sym << CLASSINIT_SUFFIX;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_label_ref(int l, ostream &s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << "label" << l;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_protobj_ref(Symbol sym, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << sym << PROTOBJ_SUFFIX;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_method_ref(Symbol classname, Symbol methodname, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << classname << METHOD_SEP << methodname;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_label_def(int l, ostream &s) {
-    INFO_IN;
+    INFO_IN_AS;
     emit_label_ref(l, s);
     s << ":" << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_beqz(char *source, int label, ostream &s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << BEQZ << source << " ";
     emit_label_ref(label, s);
     s << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_beq(char *src1, char *src2, int label, ostream &s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << BEQ << src1 << " " << src2 << " ";
     emit_label_ref(label, s);
     s << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_bne(char *src1, char *src2, int label, ostream &s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << BNE << src1 << " " << src2 << " ";
     emit_label_ref(label, s);
     s << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_bleq(char *src1, char *src2, int label, ostream &s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << BLEQ << src1 << " " << src2 << " ";
     emit_label_ref(label, s);
     s << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_blt(char *src1, char *src2, int label, ostream &s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << BLT << src1 << " " << src2 << " ";
     emit_label_ref(label, s);
     s << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_blti(char *src1, int imm, int label, ostream &s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << BLT << src1 << " " << imm << " ";
     emit_label_ref(label, s);
     s << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_bgti(char *src1, int imm, int label, ostream &s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << BGT << src1 << " " << imm << " ";
     emit_label_ref(label, s);
     s << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_branch(int l, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << BRANCH;
     emit_label_ref(l, s);
     s << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 //
 // Push a register on the stack. The stack grows towards smaller addresses.
 //
 
-static void emit_push(char *reg, ostream& str) {
-    INFO_IN;
-    emit_store(reg, 0, SP, str);
-    emit_addiu(SP, SP, -4, str);
-    INFO_OUT;
+static void emit_push(char *reg, ostream& s) {
+    INFO_IN_AS;
+    emit_store(reg, 0, SP, s);
+    emit_addiu(SP, SP, -4, s);
+    INFO_OUT_AS;
 }
 
 //
@@ -418,9 +427,9 @@ static void emit_push(char *reg, ostream& str) {
 //
 
 static void emit_fetch_int(char *dest, char *source, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     emit_load(dest, DEFAULT_OBJFIELDS, source, s);
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 //
@@ -429,29 +438,29 @@ static void emit_fetch_int(char *dest, char *source, ostream& s) {
 //
 
 static void emit_store_int(char *source, char *dest, ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     emit_store(source, DEFAULT_OBJFIELDS, dest, s);
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 /// Begin here
 
 static void emit_test_collector(ostream &s) {
-    INFO_IN;
+    INFO_IN_AS;
     emit_push(ACC, s);
     emit_move(ACC, SP, s); // stack end
     emit_move(A1, ZERO, s); // allocate nothing
     s << JAL << gc_collect_names[cgen_Memmgr] << endl;
     emit_addiu(SP, SP, 4, s);
     emit_load(ACC, 0, SP, s);
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 static void emit_gc_check(char *source, ostream &s) {
-    INFO_IN;
+    INFO_IN_AS;
     if (source != (char*) A1) emit_move(A1, source, s);
     s << JAL << "_gc_check" << endl;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 
@@ -481,9 +490,9 @@ static void emit_gc_check(char *source, ostream &s) {
 //
 
 void StringEntry::code_ref(ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << STRCONST_PREFIX << index;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 //
@@ -492,7 +501,7 @@ void StringEntry::code_ref(ostream& s) {
 //
 
 void StringEntry::code_def(ostream& s, int stringclasstag) {
-    INFO_IN;
+    INFO_IN_AS;
     IntEntryP lensym = inttable.add_int(len);
 
     // Add -1 eye catcher
@@ -506,14 +515,14 @@ void StringEntry::code_def(ostream& s, int stringclasstag) {
 
 
     /***** Add dispatch information for class String ******/
-
+    s << "String" << DISPTAB_SUFFIX;
     s << endl; // dispatch table
     s << WORD;
     lensym->code_ref(s);
     s << endl; // string length
     emit_string_constant(s, str); // ascii string
     s << ALIGN; // align to word
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 //
@@ -523,10 +532,10 @@ void StringEntry::code_def(ostream& s, int stringclasstag) {
 //
 
 void StrTable::code_string_table(ostream& s, int stringclasstag) {
-    INFO_IN;
+    INFO_IN_AS;
     for (List<StringEntry> *l = tbl; l; l = l->tl())
         l->hd()->code_def(s, stringclasstag);
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 //
@@ -534,9 +543,9 @@ void StrTable::code_string_table(ostream& s, int stringclasstag) {
 //
 
 void IntEntry::code_ref(ostream &s) {
-    INFO_IN;
+    INFO_IN_AS;
     s << INTCONST_PREFIX << index;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 //
@@ -545,7 +554,7 @@ void IntEntry::code_ref(ostream &s) {
 //
 
 void IntEntry::code_def(ostream &s, int intclasstag) {
-    INFO_IN;
+    INFO_IN_AS;
     // Add -1 eye catcher
     s << WORD << "-1" << endl;
 
@@ -556,10 +565,10 @@ void IntEntry::code_def(ostream &s, int intclasstag) {
         << WORD;
 
     /***** Add dispatch information for class Int ******/
-
+    s << "Int" << DISPTAB_SUFFIX;
     s << endl; // dispatch table
     s << WORD << str << endl; // integer value
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 
@@ -570,10 +579,10 @@ void IntEntry::code_def(ostream &s, int intclasstag) {
 //
 
 void IntTable::code_string_table(ostream &s, int intclasstag) {
-    INFO_IN;
+    INFO_IN_AS;
     for (List<IntEntry> *l = tbl; l; l = l->tl())
         l->hd()->code_def(s, intclasstag);
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 
@@ -586,9 +595,9 @@ BoolConst::BoolConst(int i) : val(i) {
 }
 
 void BoolConst::code_ref(ostream& s) const {
-    INFO_IN;
+    INFO_IN_AS;
     s << BOOLCONST_PREFIX << val;
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 //
@@ -597,7 +606,7 @@ void BoolConst::code_ref(ostream& s) const {
 //
 
 void BoolConst::code_def(ostream& s, int boolclasstag) {
-    INFO_IN;
+    INFO_IN_AS;
     // Add -1 eye catcher
     s << WORD << "-1" << endl;
 
@@ -608,10 +617,10 @@ void BoolConst::code_def(ostream& s, int boolclasstag) {
         << WORD;
 
     /***** Add dispatch information for class Bool ******/
-
+    s << "Bool" << DISPTAB_SUFFIX;
     s << endl; // dispatch table
     s << WORD << val << endl; // value (0 or 1)
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -750,6 +759,14 @@ void CgenClassTable::code_constants() {
     code_bools(boolclasstag);
     INFO_OUT;
 }
+
+void CgenClassTable::code_protObjs() {
+ }
+
+void CgenClassTable::code_dispTabs() {
+ }
+
+
 
 CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL), str(s) {
     INFO_IN;
@@ -961,13 +978,13 @@ void CgenNode::set_parentnd(CgenNodeP p) {
 
 void CgenClassTable::code() {
     INFO_IN;
-    if (cgen_debug) cout << "coding global data" << endl;
+    str << "# coding global data" << endl;
     code_global_data();
 
-    if (cgen_debug) cout << "choosing gc" << endl;
+    str << "# choosing gc" << endl;
     code_select_gc();
 
-    if (cgen_debug) cout << "coding constants" << endl;
+    str << "# coding constants" << endl;
     code_constants();
 
     //                 Add your code to emit
@@ -976,7 +993,35 @@ void CgenClassTable::code() {
     //                   - dispatch tables
     //
 
-    if (cgen_debug) cout << "coding global text" << endl;
+    code_protObjs();
+    code_dispTabs();
+
+    str << "# coding class object Table. \n";
+    str << CLASSOBJTAB << LABEL;
+    for (List<CgenNode> *l = nds; l; l = l->tl())
+    {
+        CgenNode* tmp = l->hd();
+        str << WORD << tmp->get_name() << PROTOBJ_SUFFIX <<"\n";
+        str << WORD << tmp->get_name() << CLASSINIT_SUFFIX <<"\n";
+    };
+
+    str << "# coding class name Table. \n";
+    str << CLASSNAMETAB << LABEL;
+    
+    for (List<CgenNode> *l = nds; l; l = l->tl())
+    {
+        // search in list
+        CgenNode* tmp = l->hd();
+        
+        //StringEntry* se = stringtable.lookup_string(tmp->get_name()->get_string());
+
+        
+        str << WORD << STRCONST_PREFIX << tmp->get_id() << "\n";
+//            tmp->basic();
+//        stringclasstag;
+    }
+    
+    str << "# coding global text" << endl;
     code_global_text();
 
     //                 Add your code to emit
@@ -990,7 +1035,7 @@ void CgenClassTable::code() {
 CgenNodeP CgenClassTable::root() {
     INFO_IN;
     return probe(Object);
-    INFO_OUT;
+//    INFO_OUT;
 }
 
 
@@ -1022,129 +1067,129 @@ CgenNode::CgenNode(Class_ nd, Basicness bstatus, CgenClassTableP ct) :
 //*****************************************************************
 
 void assign_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void static_dispatch_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void dispatch_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void cond_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void loop_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void typcase_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void block_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void let_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void plus_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void sub_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void mul_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void divide_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void neg_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void lt_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void eq_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void leq_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void comp_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void int_const_class::code(ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     //
     // Need to be sure we have an IntEntry *, not an arbitrary Symbol
     //
     emit_load_int(ACC, inttable.lookup_string(token->get_string()), s);
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 void string_const_class::code(ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     emit_load_string(ACC, stringtable.lookup_string(token->get_string()), s);
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 void bool_const_class::code(ostream& s) {
-    INFO_IN;
+    INFO_IN_AS;
     emit_load_bool(ACC, BoolConst(val), s);
-    INFO_OUT;
+    INFO_OUT_AS;
 }
 
 void new__class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void isvoid_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void no_expr_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 void object_class::code(ostream &s) {
-    INFO_IN;
-    INFO_OUT;
+    INFO_IN_AS;
+    INFO_OUT_AS;
 }
 
 
