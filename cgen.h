@@ -21,7 +21,8 @@ private:
    int stringclasstag;
    int intclasstag;
    int boolclasstag;
-
+   int currclasstag;
+   
 
 // The following methods emit code for
 // constants and global declarations.
@@ -57,10 +58,8 @@ private:
    CgenNodeP parentnd;                        // Parent of class
    List<CgenNode> *children;                  // Children of class
    Basicness basic_status;                    // `Basic' if class is basic
-                                              // `NotBasic' otherwise
-   
-   int id;
-   
+                                              // `NotBasic' otherwise   
+   int id;                                    // Current class tag
 public:
    CgenNode(Class_ c,
             Basicness bstatus,
@@ -72,8 +71,15 @@ public:
    CgenNodeP get_parentnd() { return parentnd; }
    int basic() { return (basic_status == Basic); }
 
-   int get_id() {return id;}
    void set_id(int _id) { id = _id;}
+   //   methods after full initialization
+   void code_ref(ostream&);
+   void code_disp(ostream&);
+   void code_prot(ostream&);
+   void code_attr_prot(ostream&);
+   
+   int get_attr_num();
+   int  get_id() {return id;}
 };
 
 class BoolConst 

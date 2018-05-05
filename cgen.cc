@@ -26,16 +26,16 @@
 #include "cgen_gc.h"
 
 long __offset = 0;
-//#define INFO_IN
-#define INFO_IN { std::string tmp_in; for(long i_in =0; i_in < __offset; ++i_in) tmp_in += " ";\
+#define INFO_IN
+//#define INFO_IN { std::string tmp_in; for(long i_in =0; i_in < __offset; ++i_in) tmp_in += " ";\
     fprintf(stderr, "%s %s: in\n", tmp_in.c_str(), __PRETTY_FUNCTION__); ++__offset; }
 
 #define INFO_IN_AS
 //#define INFO_IN_AS { std::string tmp_in; for(long i_in =0; i_in < __offset; ++i_in) tmp_in += " ";\
 //    s << "\n # " << tmp_in << " " << __PRETTY_FUNCTION__ << " in\n"; }
 
-//#define INFO_OUT
-#define INFO_OUT { --__offset; std::string tmp_out; for(long i_out =0; i_out < __offset; ++i_out) tmp_out += " ";\
+#define INFO_OUT
+//#define INFO_OUT { --__offset; std::string tmp_out; for(long i_out =0; i_out < __offset; ++i_out) tmp_out += " ";\
     fprintf(stderr, "%s %s: out\n", tmp_out.c_str(), __PRETTY_FUNCTION__);}
 
 #define INFO_OUT_AS
@@ -761,18 +761,36 @@ void CgenClassTable::code_constants() {
 }
 
 void CgenClassTable::code_protObjs() {
- }
+    // Add -1 eye catcher
+
+    str << "# coding prototype Objects. \n";
+    for (List<CgenNode> *l = nds; l; l = l->tl())
+    {
+        CgenNode* tmp = l->hd();
+        tmp->code_prot(str);
+    };
+}
 
 void CgenClassTable::code_dispTabs() {
- }
+    str << "# coding disp Tables. \n";
+    for (List<CgenNode> *l = nds; l; l = l->tl())
+    {
+        CgenNode* tmp = l->hd();
+        tmp->code_ref(str);
+        str << DISPTAB_SUFFIX << LABEL;
+        tmp->code_disp(str);
+    };
+}
 
 
 
 CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL), str(s) {
     INFO_IN;
-    stringclasstag = 0 /* Change to your String class tag here */;
-    intclasstag = 0 /* Change to your Int class tag here */;
-    boolclasstag = 0 /* Change to your Bool class tag here */;
+    // Filled automatically
+    stringclasstag = 0;
+    intclasstag = 0;
+    boolclasstag = 0;
+    currclasstag = 0;
 
     enterscope();
     if (cgen_debug) cout << "Building CgenClassTable" << endl;
@@ -917,11 +935,28 @@ void CgenClassTable::install_class(CgenNodeP nd) {
     INFO_IN;
     Symbol name = nd->get_name();
 
-    if (probe(name)) {
+    CgenNodeP cl= probe(name);
+    if (cl) {
+        nd->set_id(cl->get_id());
         INFO_OUT;
         return;
     }
-
+    
+//    std::cout << " For " << nd->get_name()->get_string() << " \n";
+//    std::cout << " geted id : " <<  currclasstag;
+    if (nd->get_name() == Int)
+    {
+        intclasstag = currclasstag;
+    } else if (nd->get_name() == Bool)
+    {
+        boolclasstag = currclasstag;
+    } else if (nd->get_name() == Str)
+    {
+        stringclasstag = currclasstag;
+    }
+    nd->set_id(currclasstag);
+    currclasstag++;
+    
     // The class name is legal, so add it to the list of classes
     // and the symbol table.
     nds = new List<CgenNode>(nd, nds);
@@ -976,6 +1011,91 @@ void CgenNode::set_parentnd(CgenNodeP p) {
     INFO_OUT;
 }
 
+void CgenNode::code_disp(ostream& s)
+{
+    if (parentnd != NULL && get_name() != Object)
+        parentnd->code_disp(s);
+    
+    for(int i = features->first();
+            features->more(i);
+            i = features->next(i))
+    {
+        Feature_class * f = features->nth(i);
+        method_class * m = dynamic_cast<method_class*>(f);
+        if (m)
+        {
+            s << WORD << get_name() << METHOD_SEP << m->name << "\n";
+        }
+
+    }
+    // str << WORD << get_name() << CLASSINIT_SUFFIX <<"\n";
+};
+
+void CgenNode::code_ref(ostream& s)
+{
+    s << this->get_name();
+}
+
+int CgenNode::get_attr_num()
+{
+    int attrnum = 0;
+    if (parentnd != NULL && get_name() != Object)
+        attrnum = parentnd->get_attr_num();
+
+    for(int i = features->first();
+            features->more(i);
+            i = features->next(i))
+    {
+        Feature_class * f = features->nth(i);
+        attr_class * a = dynamic_cast<attr_class*>(f);
+        if (a) attrnum++;
+    }
+    return attrnum;
+};
+
+void CgenNode::code_attr_prot(ostream& s)
+{
+    INFO_IN_AS;
+    if (parentnd != NULL && get_name() != Object)
+        parentnd->code_attr_prot(s);
+
+    for(int i = features->first();
+            features->more(i);
+            i = features->next(i))
+    {
+        Feature_class * f = features->nth(i);
+        attr_class * a = dynamic_cast<attr_class*>(f);
+        if (a)
+        {
+            s << WORD << 0 << " # " << a->type_decl << endl;
+        }
+    }
+    INFO_OUT_AS;
+}
+
+void CgenNode::code_prot(ostream& s)
+{
+    INFO_IN_AS;
+    // Add -1 eye catcher
+    s << WORD << "-1" << endl;
+
+    code_ref(s);
+    s << PROTOBJ_SUFFIX << LABEL;
+    s << WORD << this->get_id() << endl; // class tag
+
+    s << WORD << DEFAULT_OBJFIELDS + get_attr_num() << endl; // FIXME !!!
+
+    /***** Add dispatch information for class Int ******/
+    s << WORD;
+    code_ref(s);
+    s << DISPTAB_SUFFIX << endl; // dispatch table
+    
+    code_attr_prot(s);
+    // <- here need put inforormation for all 
+    
+    INFO_OUT_AS;
+}
+
 void CgenClassTable::code() {
     INFO_IN;
     str << "# coding global data" << endl;
@@ -993,33 +1113,44 @@ void CgenClassTable::code() {
     //                   - dispatch tables
     //
 
-    code_protObjs();
-    code_dispTabs();
-
+    str << "# coding class name Table. \n";
+    str << CLASSNAMETAB << LABEL;    
+    for (int i = 0; i < currclasstag; ++i)
+    {
+        // Looking for i id-s
+        std::cout << " looking for " << i << " :";
+        List<CgenNode> *l = nds;
+        for (;  l && (l->hd()->get_id() != i);
+                l = l->tl())
+        {
+        }
+        // We must find this node.
+        assert(l);
+        std::cout << " found " << l->hd()->get_name()->get_string() << " \n";
+        // Looking for string
+        StringEntry* se = stringtable.lookup_string(l->hd()->get_name()->get_string());
+        str << WORD; 
+        se->code_ref(str);
+        str << "\n";        
+    }
+    
     str << "# coding class object Table. \n";
     str << CLASSOBJTAB << LABEL;
     for (List<CgenNode> *l = nds; l; l = l->tl())
     {
         CgenNode* tmp = l->hd();
-        str << WORD << tmp->get_name() << PROTOBJ_SUFFIX <<"\n";
-        str << WORD << tmp->get_name() << CLASSINIT_SUFFIX <<"\n";
+        str << WORD;
+        tmp->code_ref(str);
+        str << PROTOBJ_SUFFIX <<"\n";
+        
+        str << WORD;
+        tmp->code_ref(str);
+        str << CLASSINIT_SUFFIX <<"\n";
     };
-
-    str << "# coding class name Table. \n";
-    str << CLASSNAMETAB << LABEL;
+ 
+    code_dispTabs();
     
-    for (List<CgenNode> *l = nds; l; l = l->tl())
-    {
-        // search in list
-        CgenNode* tmp = l->hd();
-        
-        //StringEntry* se = stringtable.lookup_string(tmp->get_name()->get_string());
-
-        
-        str << WORD << STRCONST_PREFIX << tmp->get_id() << "\n";
-//            tmp->basic();
-//        stringclasstag;
-    }
+    code_protObjs();
     
     str << "# coding global text" << endl;
     code_global_text();

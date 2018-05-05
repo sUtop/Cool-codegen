@@ -1,7 +1,12 @@
 
 ASSN = 5
 CLASS= cs143
-CLASSDIR= /usr/class/cs143/cool
+ifeq "compilers" "${USER}"
+	CLASSDIR := "/usr/class/cs143/cool"
+else
+	CLASSDIR := "/usr/class/"
+endif
+
 LIB= -lfl
 AR= gar
 ARCHIVE_NEW= -cr
@@ -19,9 +24,8 @@ OBJS= ${CFIL:.cc=.o}
 OUTPUT= good.output bad.output
 
 
-CPPINCLUDE= -I.
-# -I${CLASSDIR}/include/PA${ASSN} -I${CLASSDIR}/src/PA${ASSN}
 
+CPPINCLUDE= -I.
 
 FFLAGS = -d8 -ocool-lex.cc
 BFLAGS = -d -v -y -b cool --debug -p cool_yy
@@ -55,7 +59,7 @@ compile:	cgen change-prot
 change-prot:
 	@-chmod 660 ${SRC} ${OUTPUT}
 
-cgen:	${OBJS} parser semant
+cgen:	${OBJS} lexer parser semant
 	${CC} ${CFLAGS} ${OBJS} ${LIB} -o cgen
 
 .cc.o:
