@@ -24,23 +24,24 @@
 
 #include "cgen.h"
 #include "cgen_gc.h"
+#include <string>
 
 long __offset = 0;
 #define INFO_IN
 //#define INFO_IN { std::string tmp_in; for(long i_in =0; i_in < __offset; ++i_in) tmp_in += " ";\
     fprintf(stderr, "%s %s: in\n", tmp_in.c_str(), __PRETTY_FUNCTION__); ++__offset; }
 
-#define INFO_IN_AS
-//#define INFO_IN_AS { std::string tmp_in; for(long i_in =0; i_in < __offset; ++i_in) tmp_in += " ";\
-//    s << "\n # " << tmp_in << " " << __PRETTY_FUNCTION__ << " in\n"; }
+//#define INFO_IN_AS
+#define INFO_IN_AS { std::string tmp_in; for(long i_in =0; i_in < __offset; ++i_in) tmp_in += " ";\
+    s << "\n # " << tmp_in << " " << __PRETTY_FUNCTION__ << " in\n"; }
 
 #define INFO_OUT
 //#define INFO_OUT { --__offset; std::string tmp_out; for(long i_out =0; i_out < __offset; ++i_out) tmp_out += " ";\
     fprintf(stderr, "%s %s: out\n", tmp_out.c_str(), __PRETTY_FUNCTION__);}
 
-#define INFO_OUT_AS
-//#define INFO_OUT_AS { std::string tmp_out; for(long i_out =0; i_out < __offset; ++i_out) tmp_out += " ";\
-//    s << "\n # " << tmp_out << " " << __PRETTY_FUNCTION__ << " out\n"; }
+//#define INFO_OUT_AS
+#define INFO_OUT_AS { std::string tmp_out; for(long i_out =0; i_out < __offset; ++i_out) tmp_out += " ";\
+    s << "\n # " << tmp_out << " " << __PRETTY_FUNCTION__ << " out\n"; }
 
 
 extern void emit_string_constant(ostream& str, char *s);
@@ -147,13 +148,16 @@ BoolConst truebool(TRUE);
 //
 //*********************************************************
 
+CgenClassTableP codegen_classtable;
+
 void program_class::cgen(ostream &s) {
     INFO_IN_AS;
     // spim wants comments to start with '#'
     s << "# start of generated code\n";
 
     initialize_constants();
-    CgenClassTable *codegen_classtable = new CgenClassTable(classes, s);
+    codegen_classtable = new CgenClassTable(classes, s);
+    codegen_classtable->code();
 
     s << "\n# end of generated code\n";
     INFO_OUT_AS;
@@ -174,39 +178,39 @@ void program_class::cgen(ostream &s) {
 //
 //////////////////////////////////////////////////////////////////////////////
 
-static void emit_load(char *dest_reg, int offset, char *source_reg, ostream& s) {
+static void emit_load(const char *dest_reg, const int offset, const char *source_reg, ostream& s) {
     INFO_IN_AS;
     s << LW << dest_reg << " " << offset * WORD_SIZE << "(" << source_reg << ")"
         << endl;
     INFO_OUT_AS;
 }
 
-static void emit_store(char *source_reg, int offset, char *dest_reg, ostream& s) {
+static void emit_store(const char *source_reg, const int offset, const char *dest_reg, ostream& s) {
     INFO_IN_AS;
     s << SW << source_reg << " " << offset * WORD_SIZE << "(" << dest_reg << ")"
         << endl;
     INFO_OUT_AS;
 }
 
-static void emit_load_imm(char *dest_reg, int val, ostream& s) {
+static void emit_load_imm(const char *dest_reg, const int val, ostream& s) {
     INFO_IN_AS;
     s << LI << dest_reg << " " << val << endl;
     INFO_OUT_AS;
 }
 
-static void emit_load_address(char *dest_reg, char *address, ostream& s) {
+static void emit_load_address(const char *dest_reg, const char *address, ostream& s) {
     INFO_IN_AS;
     s << LA << dest_reg << " " << address << endl;
     INFO_OUT_AS;
 }
 
-static void emit_partial_load_address(char *dest_reg, ostream& s) {
+static void emit_partial_load_address(const char *dest_reg, ostream& s) {
     INFO_IN_AS;
     s << LA << dest_reg << " ";
     INFO_OUT_AS;
 }
 
-static void emit_load_bool(char *dest, const BoolConst& b, ostream& s) {
+static void emit_load_bool(const char *dest, const BoolConst& b, ostream& s) {
     INFO_IN_AS;
     emit_partial_load_address(dest, s);
     b.code_ref(s);
@@ -214,7 +218,7 @@ static void emit_load_bool(char *dest, const BoolConst& b, ostream& s) {
     INFO_OUT_AS;
 }
 
-static void emit_load_string(char *dest, StringEntry *str, ostream& s) {
+static void emit_load_string(const char *dest, StringEntry *str, ostream& s) {
     INFO_IN_AS;
     emit_partial_load_address(dest, s);
     str->code_ref(s);
@@ -290,7 +294,7 @@ static void emit_jalr(char *dest, ostream& s) {
     INFO_OUT_AS;
 }
 
-static void emit_jal(char *address, ostream &s) {
+static void emit_jal(const char *address, ostream &s) {
     INFO_IN_AS;
     s << JAL << address << endl;
     INFO_OUT_AS;
@@ -420,6 +424,67 @@ static void emit_push(char *reg, ostream& s) {
     INFO_OUT_AS;
 }
 
+#define HEADER_SIZE 3
+
+// Push entry function header
+//Object_init:
+//        addiu   $sp $sp -12 # push 1
+//        sw      $fp 12($sp) # push fp to stack
+//        sw      $s0 8($sp)  # push SELF to stack
+//        sw      $ra 4($sp)  # push $ra to stack (return address!)
+//        addiu   $fp $sp 4   # increese $fp
+//        move    $s0 $a0     # save previous return value to s0
+static void emit_push_header(ostream& s, int size)
+{
+    emit_addiu(SP, SP, -size * WORD_SIZE, s);
+    // Save frame pointer
+    emit_store(FP, size, SP, s);
+    // save self pointer
+    emit_store(SELF, size - 1, SP, s);
+    // save return address
+    emit_store(RA, size - 2, SP, s);
+    // save register $s1
+
+    emit_addiu(FP, SP, WORD_SIZE, s);
+}
+
+static void emit_push_header_class(ostream& s)
+{
+    emit_push_header(s, HEADER_SIZE + 1);
+    // save register $s1
+    emit_store("$s1", HEADER_SIZE - 3, SP, s);
+    // Change self to acc
+    emit_move(SELF, ACC, s);
+};
+
+//        move    $a0 $s0     # pop previous return value to a0
+//        lw      $fp 12($sp) # pop previous frame pointer
+//        lw      $s0 8($sp)  # pop previous SELF
+//        lw      $ra 4($sp)  # pop previous return address
+//        addiu   $sp $sp 12  # decrease sp
+
+//        jr      $ra
+static void emit_pop_header(ostream& s, int size)
+{
+    // restore previous fp
+    emit_load(FP, size, SP, s);
+    // restore previous SELF
+    emit_load(SELF, size - 1, SP, s);
+    // restore previous return address
+    emit_load(RA, size - 2, SP, s);
+    // decreese sp
+    emit_addiu(SP, SP, size * WORD_SIZE, s);
+}
+
+static void emit_pop_header_class(ostream& s)
+{
+    // Change acc to self
+    emit_move(ACC, SELF, s);
+    // restore register $s1
+    emit_load("$s1", 0, SP, s);
+    emit_pop_header(s, HEADER_SIZE + 1);
+}
+
 //
 // Fetch the integer value in an Int object.
 // Emits code to fetch the integer value of the Integer object pointed
@@ -462,7 +527,6 @@ static void emit_gc_check(char *source, ostream &s) {
     s << JAL << "_gc_check" << endl;
     INFO_OUT_AS;
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -534,7 +598,9 @@ void StringEntry::code_def(ostream& s, int stringclasstag) {
 void StrTable::code_string_table(ostream& s, int stringclasstag) {
     INFO_IN_AS;
     for (List<StringEntry> *l = tbl; l; l = l->tl())
+    {
         l->hd()->code_def(s, stringclasstag);
+    }
     INFO_OUT_AS;
 }
 
@@ -782,7 +848,58 @@ void CgenClassTable::code_dispTabs() {
     };
 }
 
+void method_class::code(ostream& s)
+{
+    // first -> attributes
+    //
+    for( int i = formals->first(); formals->more(i) ; i = formals->next(i))
+    {
+        formal_class* f= dynamic_cast<formal_class*>(formals->nth(i));
+        if (f)
+        {
+            s << " # formal " << f->name->get_string() << endl;
+        } else
+        {
+            s << " # unknown formal" << endl;
+        }
+    }
+    expr->code(s);
 
+    //s <<
+}
+
+
+void CgenClassTable::code_methods() {
+    for (List<CgenNode> *l = nds; l; l = l->tl())
+    {
+        CgenNode* tmp = l->hd();
+        if (tmp->basic())
+        {
+            continue;
+        }
+        for(int i = tmp->features->first();
+                tmp->features->more(i);
+                i = tmp->features->next(i))
+        {
+            Feature_class * f = tmp->features->nth(i);
+            method_class * m = dynamic_cast<method_class*>(f);
+            if (m)
+            {
+                tmp->code_ref(str);
+                str << METHOD_SEP;
+                str << m->name << LABEL;
+
+                emit_push_header(str, HEADER_SIZE);
+
+                m->code(str);
+
+                emit_pop_header(str, HEADER_SIZE);
+
+                emit_return(str);
+            }
+        }
+    }
+}
 
 CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL), str(s) {
     INFO_IN;
@@ -798,8 +915,7 @@ CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL), str(s) 
     install_classes(classes);
     build_inheritance_tree();
 
-    code();
-    exitscope();
+//    exitscope();
     INFO_OUT;
 }
 
@@ -1067,10 +1183,42 @@ void CgenNode::code_attr_prot(ostream& s)
         attr_class * a = dynamic_cast<attr_class*>(f);
         if (a)
         {
-            s << WORD << 0 << " # " << a->type_decl << endl;
+            s << WORD;
+            // here need get default value for all classes
+            if (a->type_decl == Int)
+            {
+                IntEntry * zero = inttable.lookup_string("0");                    
+                zero->code_ref(s);                
+            } else if (a->type_decl == Str)
+            {
+                StringEntry * zero = stringtable.lookup_string("");
+                zero->code_ref(s);
+
+            } else if (a->type_decl == Bool)
+            {
+                s << "0" << "   # Bool default";
+            } else
+            {
+                s << "0";
+                s << " # " << a->type_decl;
+            }
+            s << endl;
         }
     }
     INFO_OUT_AS;
+}
+
+void CgenNode::emit_init(ostream& s)
+{
+    emit_push_header(s, HEADER_SIZE);
+    if (parentnd != NULL && get_name() != Object)
+    {
+        std::string str = parentnd->get_name()->get_string();
+        str += CLASSINIT_SUFFIX;
+        emit_jal(str.c_str(), s);
+    }
+    emit_pop_header(s, HEADER_SIZE);
+    emit_return(s);
 }
 
 void CgenNode::code_prot(ostream& s)
@@ -1118,7 +1266,7 @@ void CgenClassTable::code() {
     for (int i = 0; i < currclasstag; ++i)
     {
         // Looking for i id-s
-        std::cout << " looking for " << i << " :";
+        // std::cout << " looking for " << i << " :";
         List<CgenNode> *l = nds;
         for (;  l && (l->hd()->get_id() != i);
                 l = l->tl())
@@ -1126,7 +1274,7 @@ void CgenClassTable::code() {
         }
         // We must find this node.
         assert(l);
-        std::cout << " found " << l->hd()->get_name()->get_string() << " \n";
+        // std::cout << " found " << l->hd()->get_name()->get_string() << " \n";
         // Looking for string
         StringEntry* se = stringtable.lookup_string(l->hd()->get_name()->get_string());
         str << WORD; 
@@ -1134,7 +1282,7 @@ void CgenClassTable::code() {
         str << "\n";        
     }
     
-    str << "# coding class object Table. \n";
+    // str << "# coding class object Table. \n";
     str << CLASSOBJTAB << LABEL;
     for (List<CgenNode> *l = nds; l; l = l->tl())
     {
@@ -1154,6 +1302,17 @@ void CgenClassTable::code() {
     
     str << "# coding global text" << endl;
     code_global_text();
+
+    for (List<CgenNode> *l = nds; l; l = l->tl())
+    {
+        // str << "  # Initialization code \n";
+        CgenNode* tmp = l->hd();
+        tmp->code_ref(str);
+        str << CLASSINIT_SUFFIX << LABEL;
+        tmp->emit_init(str);
+    };
+    
+    code_methods();
 
     //                 Add your code to emit
     //                   - object initializer
@@ -1207,8 +1366,46 @@ void static_dispatch_class::code(ostream &s) {
     INFO_OUT_AS;
 }
 
+static int create_label()
+{
+    static int label = 0;
+    return label++;
+}
+
 void dispatch_class::code(ostream &s) {
     INFO_IN_AS;
+    Symbol type = expr->get_type();
+    if ( type == SELF_TYPE)
+    {
+//            type = global_node->get_name();
+    }
+
+    for ( int i = actual->first(); actual->more( i); i = actual->next( i))
+    {
+            actual->nth( i)->code( s);
+            emit_push( ACC, s);
+    }
+    expr->code( s);
+
+    int jump_label = create_label();
+    emit_bne( ACC, ZERO, jump_label, s);
+//    emit_load_string( ACC, stringtable.lookup_string( global_node->filename->get_string()), s);
+    emit_load_string( ACC, stringtable.lookup_string(""), s);
+    emit_load_imm( T1, line_number, s);
+    emit_jal( "_dispatch_abort", s);
+
+    CgenNodeP node = codegen_classtable->lookup( type);
+//    int offset = ( ( int)( node->lookup_method_offset( name))) - DEFAULT_METHOD_OFFSET;
+
+    emit_label_def( jump_label, s);
+    emit_load( T1, DISPTABLE_OFFSET, ACC, s);
+    emit_load( T1, offset, T1, s);
+    emit_jalr( T1, s);
+
+    expr_is_const = 1;
+    if ( cgen_debug)
+            cout  << "Dispatch " << name << " is const ? " << bool(expr_is_const) << endl;
+
     INFO_OUT_AS;
 }
 
@@ -1234,6 +1431,11 @@ void block_class::code(ostream &s) {
 
 void let_class::code(ostream &s) {
     INFO_IN_AS;
+    init->code( s);
+    s << " # let code \n";
+//	int offset = alloc_temp();
+    emit_store( ACC, 0, FP, s);
+    body->code( s);
     INFO_OUT_AS;
 }
 

@@ -35,6 +35,7 @@ private:
 
    void code_protObjs();
    void code_dispTabs();
+   void code_methods();
    
 // The following creates an inheritance graph from
 // a list of classes.  The graph is implemented as
@@ -69,6 +70,7 @@ public:
    List<CgenNode> *get_children() { return children; }
    void set_parentnd(CgenNodeP p);
    CgenNodeP get_parentnd() { return parentnd; }
+    // FIXME - check it
    int basic() { return (basic_status == Basic); }
 
    void set_id(int _id) { id = _id;}
@@ -78,6 +80,7 @@ public:
    void code_prot(ostream&);
    void code_attr_prot(ostream&);
    
+   void emit_init(ostream&);
    int get_attr_num();
    int  get_id() {return id;}
 };
